@@ -29,12 +29,24 @@ class BD:
             with sqlite3.connect(self.db_nombre) as conn:
                 mi_cursor = conn.cursor()
                 mi_cursor.execute("SELECT COUNT(*) FROM Cliente;")
-                registros = mi_cursor.fetchone()
-                return registros[0]
+                registro = mi_cursor.fetchone()
+                return registro[0]
         except Error as e:
             print(e)
         except Exception as e:
             print(f"Infomacion del error: {e}")
+    
+    def conteo_productos(self):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                mi_cursor.execute("SELECT COUNT(*) FROM Producto;")
+                registro = mi_cursor.fetchone()
+                return registro[0]
+        except Error as e:
+            print(e)
+        except Exception as e:
+            print(f"Informacion del error: {e}")
         
     def insertar_cliente(self,codigo, nombre, apellido_pat,apellido_mat, numero, email):
         try:
@@ -49,6 +61,69 @@ class BD:
             print(e)
         except Exception as e:
             print(f"El error obtenido es: {e}")
+    
+    def insertar_producto(self,codigo,nombre,precio):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                valores = {"codigo":codigo ,"nombre": nombre,"precio": precio}
+                mi_cursor.execute("INSERT INTO Producto (id_producto,nombre,precio) VALUES(:codigo, :nombre, :precio)",valores)
+                conn.commit()
+                print("Producto Registrado")
+                print(f"Clave del producto: {codigo}")
+        except Error as e:
+            print(e)
+        except Exception as e:
+            print(f"El error obtenido es: {e}")
+
+    def buscar_cliente(self,codigo):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                valores = {'codigo': codigo}
+                mi_cursor.execute("SELECT * FROM Cliente WHERE id_cliente = :codigo", valores)
+                registro = mi_cursor.fetchone()
+                if registro:
+                    return True
+                else:
+                    return False
+        except Error as e:
+            print(e) 
+        except Exception as e:
+            print(f"El error obtenido es: {e}")
+    
+    def buscar_producto(self,codigo):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                valores = {"codigo": codigo}
+                mi_cursor.execute("SELECT * FROM Producto WHERE id_producto = :codigo;", valores)
+                registro = mi_cursor.fetchone()
+                if registro:
+                    return True
+                else:
+                    return False
+        except Error as e:
+            print(e)
+        except Exception as e:
+            print(f"El error obtenido es: {e}")
+
+    def info_productos(self, codigos):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                consulta = f"SELECT id_producto, nombre, precio FROM Producto WHERE id_producto IN ({','.join(['?']*len(codigos))})"
+                mi_cursor.execute(consulta,codigos)
+                registros = mi_cursor.fetchall()
+                return registros
+        except Error as e:
+            print(e)
+        except Exception as e:
+            print(f"El error obtenido es: {e}")
+    
+
+
+
 
 class Ventas:
     def __init__(self, ventas_bd):
@@ -67,23 +142,23 @@ class Ventas:
                 case "1":
                     ventas.registrar_cliente()
                 case "2":
-                    pass
+                    ventas.registrar_producto()
                 case "3":
-                    pass
+                    ventas.realizar_venta(ventas)
                 case "4":
                     pass
                 case "5":
-                    pass
+                    break
                 case _:
                     print("Opcion no valida. Ingrese algun numero del 1-4")
         
     def registrar_cliente(self):
         while True:
-            cliente_nom = input("Ingrese nombres del cliente (Escriba SALIR para volver al menú): ").strip()
+            cliente_nom = input("Ingrese nombres del cliente (Escriba SALIR para volver al menú.): ").strip()
             if cliente_nom.upper() == "SALIR":
                 return 
             cliente_ap = input("Ingrese el apellido paterno: ").strip()
-            cliente_am = input("Ingrese el apellido materno (Solo presiona la tecla ENTER para omitir): ").strip()
+            cliente_am = input("Ingrese el apellido materno (Solo presione la tecla ENTER para omitir): ").strip()
             if cliente_am == '':
                 cliente_am == None
             
@@ -95,7 +170,59 @@ class Ventas:
 
             self.ventas_bd.insertar_cliente(codigo_cliente,cliente_nom, cliente_ap, cliente_am, cliente_tel,cliente_email)
 
+    
+    def registrar_producto(self):
+        while True:
+            producto_nombre = input("Ingrese el nombre del producto (Escriba SALIR para volver al menú.): ")
+            if producto_nombre.upper() == "SALIR":
+                return
+            while True:
+                try:
+                    producto_precio = float(input("Ingrese el precio del producto: "))
+                    break
+                except ValueError:
+                    print("Ingrese un valor valido")
+
+            codigo_producto = f"{producto_nombre[0:2]}{self.ventas_bd.conteo_productos() + 1}" 
+
+            self.ventas_bd.insertar_producto(codigo_producto,producto_nombre,producto_precio)
+
+
+    def realizar_venta(self, ventas):
+        carro = {}
+        while True:
+            print("---MENÚ DE VENTAS---")
+            codigo_cliente = input("Ingrese el codigo de cliente: (Escriba SALIR para volver al menú.): ").strip()
+            if codigo_cliente.upper() == "SALIR":
+                return 
+            if self.ventas_bd.buscar_cliente(codigo_cliente):
+                print("Cliente encontrado")
+            else:
+                print("Cliente no registrado")
+                return
+            while True:
+
+                cod_producto = input("Ingrese el codigo del producto(Presione la tecla ENTER al acabar de ingresar productos): ").strip()
+                if cod_producto == '':
+                    break
+                if self.ventas_bd.buscar_producto(cod_producto):
+                    print("Producto agregado")
+                else:
+                    print("Producto no encontrado")
+                    continue 
+                if cod_producto in carro:
+                    carro[cod_producto] += 1
+                else:
+                    carro[cod_producto] = 1 
+                info_productos = self.ventas_bd.info_productos(list(carro.keys()))
+                ver_ticket(info_productos,carro)
             
 
+                
 
 
+
+
+
+            
+    
