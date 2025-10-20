@@ -3,4 +3,4 @@ def nulificador(valor):
         return None
     
 def escape():
-    
+    pass
