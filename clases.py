@@ -125,6 +125,25 @@ class BD:
             print(e)
         except Exception as e:
             print(f"El error obtenido es: {e}")
+    
+    def ventas_registradas(self):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                mi_cursor.execute("""SELECT  V.id_venta,  C.nombre ||' ' ||  C.apellido_paterno ||' ' || C.apellido_materno as Cliente, V.fecha_hora, P.nombre AS Producto, P.precio as Precio
+                                    FROM Venta_detalle as dv
+                                    INNER JOIN Producto as P
+                                    ON dv.id_producto = P.id_producto
+                                    INNER JOIN Venta as V
+                                    ON dv.id_venta = V.id_venta
+                                    INNER JOIN Cliente as C
+                                    ON C.id_cliente = V.id_venta;""")
+                registros = mi_cursor.fetchall()
+                return registros
+        except Error as e:
+            print(e)
+        except Exception as e:
+            print(f"El error obtenido es: {e}")
 
 class Ventas:
     def __init__(self, ventas_bd):
@@ -139,7 +158,7 @@ class Ventas:
             print("4. Realizar reporte de ventas")
             print("5. Salir")
 
-            match input("Selecciona una opcion (1-4): "):
+            match input("Selecciona una opcion (1-5): "):
                 case "1":
                     ventas.registrar_cliente()
                 case "2":
@@ -149,9 +168,9 @@ class Ventas:
                 case "4":
                     ventas.realizar_venta()
                 case "5":
-                    break
+                    ventas.reporte_ventas()
                 case _:
-                    print("Opcion no valida. Ingrese algun numero del 1-4")
+                    print("Opcion no valida. Ingrese algun numero del 1-5")
         
     def registrar_cliente(self):
         while True:
@@ -228,7 +247,23 @@ class Ventas:
                     return 
                 else:
                     print("Ingrese las opciones S o N")
+    
+    def reporte_ventas(self):
+        registros = self.ventas_bd.ventas_registradas()
+        try:
+            hoja_calculo = openpyxl.Workbook()
+            hoja = hoja_calculo.active
+            hoja.title = "Ventas"
 
+            encabezados = ["Id_venta","Cliente", "Fecha y hora", "Producto", "Precio"]
+            hoja.append(encabezados)
+
+            for venta in registros:
+                hoja.append(venta)
+            hoja_calculo.save("Ventas_registradas.xlsx")
+            print("Ventas exportadas a hoja de excel")
+        except Exception as e:
+            print(f"El error obtenido fue: {e}")
                 
 
 
