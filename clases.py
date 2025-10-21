@@ -15,32 +15,21 @@ class BD:
             with sqlite3.connect(self.db_nombre) as conn:
                 mi_cursor = conn.cursor()
                 mi_cursor.execute("CREATE TABLE IF NOT EXISTS Cliente(id_cliente INTERGER PRIMARY KEY,nombre TEXT NOT NULL,apellido_paterno TEXT NOT NULL,apellido_materno TEXT,numero_telefono TEXT NOT NULL,correo TEXT NOT NULL);")
-                mi_cursor.execute("CREATE TABLE IF NOT EXISTS Venta(id_venta TEXT PRIMARY KEY,id_cliente INTERGER NOT NULL,fecha_hora DATETIME NOT NULL,total REAL NOT NULL,CONSTRAINT fk_id_cliente FOREIGN KEY(id_cliente) REFERENCES Cliente(id_cliente));")
+                mi_cursor.execute("CREATE TABLE IF NOT EXISTS Venta(id_venta INTERGER PRIMARY KEY,id_cliente INTERGER NOT NULL,fecha_hora DATETIME NOT NULL,total REAL NOT NULL,CONSTRAINT fk_id_cliente FOREIGN KEY(id_cliente) REFERENCES Cliente(id_cliente));")
                 mi_cursor.execute("CREATE TABLE IF NOT EXISTS Producto(id_producto TEXT PRIMARY KEY,nombre TEXT NOT NULL,precio REAL NOT NULL);")
-                mi_cursor.execute("CREATE TABLE IF NOT EXISTS Venta_Detalle(id_producto TEXT,id_venta TEXT,cantidad REAL NOT NULL,CONSTRAINT fk_id_producto FOREIGN KEY(id_producto) REFERENCES Producto(id_producto),CONSTRAINT fk_id_venta FOREIGN KEY(id_venta) REFERENCES Venta(id_venta),PRIMARY KEY(id_producto,id_venta));")
+                mi_cursor.execute("CREATE TABLE IF NOT EXISTS Venta_Detalle(id_producto INTERGER,id_venta TEXT,cantidad REAL NOT NULL,CONSTRAINT fk_id_producto FOREIGN KEY(id_producto) REFERENCES Producto(id_producto),CONSTRAINT fk_id_venta FOREIGN KEY(id_venta) REFERENCES Venta(id_venta),PRIMARY KEY(id_producto,id_venta));")
                 print("Tablas creadas con exitosamente")
         except Error as e:
             print(e)
         except Exception as e:
             print(f"Informacion del error: {e}")
 
-    def conteo_clientes(self):
+    def contador(self,tabla):
         try:
             with sqlite3.connect(self.db_nombre) as conn:
                 mi_cursor = conn.cursor()
-                mi_cursor.execute("SELECT COUNT(*) FROM Cliente;")
-                registro = mi_cursor.fetchone()
-                return registro[0]
-        except Error as e:
-            print(e)
-        except Exception as e:
-            print(f"Infomacion del error: {e}")
-    
-    def conteo_productos(self):
-        try:
-            with sqlite3.connect(self.db_nombre) as conn:
-                mi_cursor = conn.cursor()
-                mi_cursor.execute("SELECT COUNT(*) FROM Producto;")
+                sentencia = f"SELECT COUNT(*) FROM {tabla};"
+                mi_cursor.execute(sentencia)
                 registro = mi_cursor.fetchone()
                 return registro[0]
         except Error as e:
@@ -120,10 +109,22 @@ class BD:
             print(e)
         except Exception as e:
             print(f"El error obtenido es: {e}")
-    
 
-
-
+    def registrar_venta(self, codigoV, codigoC, tiempo, total, carro):
+        try:
+            with sqlite3.connect(self.db_nombre) as conn:
+                mi_cursor = conn.cursor()
+                valores = {'codigoV': codigoV, 'codigoC':codigoC, 'tiempo': tiempo,'total': total}
+                mi_cursor.execute("INSERT INTO Venta (id_venta,id_cliente,fecha_hora,total) VALUES (:codigoV, :codigoC, :tiempo, :total)", valores)
+                for producto, cantidad in carro.items():
+                     valores2 = {'codigoV': codigoV, 'codigoP':producto, 'cantidad': cantidad}
+                     mi_cursor.execute("INSERT INTO Venta_detalle (id_producto,id_venta, cantidad) VALUES (:codigoP, :codigoV, :cantidad)",valores2)
+                conn.commit()
+                print("Venta realizada")
+        except Error as e:
+            print(e)
+        except Exception as e:
+            print(f"El error obtenido es: {e}")
 
 class Ventas:
     def __init__(self, ventas_bd):
@@ -144,9 +145,9 @@ class Ventas:
                 case "2":
                     ventas.registrar_producto()
                 case "3":
-                    ventas.realizar_venta(ventas)
+                    ventas.realizar_venta()
                 case "4":
-                    pass
+                    ventas.realizar_venta()
                 case "5":
                     break
                 case _:
@@ -166,7 +167,7 @@ class Ventas:
 
             cliente_email = input("Ingrese el email de ").strip()
 
-            codigo_cliente =  self.ventas_bd.conteo_clientes() + 1
+            codigo_cliente =  self.ventas_bd.contador("Cliente") + 1
 
             self.ventas_bd.insertar_cliente(codigo_cliente,cliente_nom, cliente_ap, cliente_am, cliente_tel,cliente_email)
 
@@ -183,12 +184,12 @@ class Ventas:
                 except ValueError:
                     print("Ingrese un valor valido")
 
-            codigo_producto = f"{producto_nombre[0:2]}{self.ventas_bd.conteo_productos() + 1}" 
+            codigo_producto = f"{producto_nombre[0:2]}{self.ventas_bd.contador("Producto") + 1}" 
 
             self.ventas_bd.insertar_producto(codigo_producto,producto_nombre,producto_precio)
 
 
-    def realizar_venta(self, ventas):
+    def realizar_venta(self):
         carro = {}
         while True:
             print("---MENÚ DE VENTAS---")
@@ -200,8 +201,7 @@ class Ventas:
             else:
                 print("Cliente no registrado")
                 return
-            while True:
-
+            while True: 
                 cod_producto = input("Ingrese el codigo del producto(Presione la tecla ENTER al acabar de ingresar productos): ").strip()
                 if cod_producto == '':
                     break
@@ -216,10 +216,20 @@ class Ventas:
                     carro[cod_producto] = 1 
                 info_productos = self.ventas_bd.info_productos(list(carro.keys()))
                 ver_ticket(info_productos,carro)
-            
+            while True:
+                opcion = input("Confirmar la compra [S/N]: ").strip().upper()
+                if opcion == 'S':
+                    codigo_venta = self.ventas_bd.contador("Venta") + 1
+                    tiempo = datetime.now()
+                    total = total_venta(info_productos,carro)
+                    self.ventas_bd.registrar_venta(codigo_venta,codigo_cliente,tiempo,total,carro)
+                    break
+                elif opcion == 'N':
+                    return 
+                else:
+                    print("Ingrese las opciones S o N")
 
                 
-
 
 
 
