@@ -193,7 +193,7 @@ class Ventas:
             
             cliente_tel = input("Ingrese el numero de telefono del cliente: ").strip()
 
-            cliente_email = input("Ingrese el email de ").strip()
+            cliente_email = input("Ingrese el email del cliente: ").strip()
 
             codigo_cliente =  self.ventas_bd.contador("Cliente") + 1
 
