@@ -208,6 +208,9 @@ class Ventas:
             while True:
                 try:
                     producto_precio = float(input("Ingrese el precio del producto: "))
+                    if producto_precio <= 0:
+                        print("Precio ingresado es invalido, intente con otra cantidad.")
+                        continue
                     break
                 except ValueError:
                     print("Ingrese un valor valido")
